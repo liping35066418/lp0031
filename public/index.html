@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数字藏品交易平台</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo">💎 NFT藏界</div>
+      <nav class="nav" id="mainNav">
+        <button class="nav-btn active" data-view="home">首页</button>
+        <button class="nav-btn" data-view="market">首发市场</button>
+        <button class="nav-btn" data-view="secondary">二手市场</button>
+        <button class="nav-btn" data-view="rank">排行榜</button>
+        <button class="nav-btn" data-view="mine" id="navMine" style="display:none">我的</button>
+      </nav>
+      <div class="user-area" id="userArea">
+        <button class="btn btn-outline btn-sm" onclick="showModal('loginModal')">登录</button>
+        <button class="btn btn-primary btn-sm" onclick="showModal('registerModal')">注册</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="container" id="app"></main>
+
+<div class="toast-container"></div>
+
+<!-- Login -->
+<div class="modal-mask" id="loginModal">
+  <div class="modal">
+    <div class="modal-header"><h3>用户登录</h3><button class="modal-close" onclick="hideModal('loginModal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">用户名</label>
+        <input class="form-input" id="loginUser" placeholder="请输入用户名"></div>
+      <div class="form-group"><label class="form-label">密码</label>
+        <input class="form-input" id="loginPwd" type="password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="hideModal('loginModal')">取消</button>
+      <button class="btn btn-primary" onclick="doLogin()">登录</button>
+    </div>
+  </div>
+</div>
+
+<!-- Register -->
+<div class="modal-mask" id="registerModal">
+  <div class="modal">
+    <div class="modal-header"><h3>用户注册</h3><button class="modal-close" onclick="hideModal('registerModal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">用户名</label>
+        <input class="form-input" id="regUser" placeholder="请输入用户名"></div>
+      <div class="form-group"><label class="form-label">昵称</label>
+        <input class="form-input" id="regNick" placeholder="请输入昵称"></div>
+      <div class="form-group"><label class="form-label">密码</label>
+        <input class="form-input" id="regPwd" type="password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doRegister()"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="hideModal('registerModal')">取消</button>
+      <button class="btn btn-primary" onclick="doRegister()">注册并登录</button>
+    </div>
+  </div>
+</div>
+
+<!-- Recharge -->
+<div class="modal-mask" id="rechargeModal">
+  <div class="modal">
+    <div class="modal-header"><h3>账户充值</h3><button class="modal-close" onclick="hideModal('rechargeModal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">充值金额 (¥)</label>
+        <input class="form-input" id="rechargeAmount" type="number" placeholder="请输入金额"></div>
+      <div class="form-row">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('rechargeAmount').value=100">¥100</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('rechargeAmount').value=500">¥500</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('rechargeAmount').value=1000">¥1000</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('rechargeAmount').value=5000">¥5000</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="hideModal('rechargeModal')">取消</button>
+      <button class="btn btn-primary" onclick="doRecharge()">确认充值</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail -->
+<div class="modal-mask" id="detailModal">
+  <div class="modal modal-lg">
+    <div class="modal-header"><h3>藏品详情</h3><button class="modal-close" onclick="hideModal('detailModal')">×</button></div>
+    <div class="modal-body" id="detailBody"></div>
+  </div>
+</div>
+
+<!-- Listing -->
+<div class="modal-mask" id="listingModal">
+  <div class="modal">
+    <div class="modal-header"><h3>挂单出售</h3><button class="modal-close" onclick="hideModal('listingModal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="listTokenId">
+      <div class="form-group"><label class="form-label">出售价格 (¥)</label>
+        <input class="form-input" id="listPrice" type="number" step="0.01" placeholder="请输入出售价格"></div>
+      <div class="form-group"><label class="form-label">挂单有效期 (小时)</label>
+        <select class="form-select" id="listHours">
+          <option value="24">24小时</option><option value="72" selected>3天</option>
+          <option value="168">7天</option><option value="720">30天</option>
+        </select></div>
+      <p style="color:var(--text-muted);font-size:12px;margin-top:8px">💡 平台收取2%服务费，价格异常将触发风控审核</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="hideModal('listingModal')">取消</button>
+      <button class="btn btn-primary" onclick="doListing()">确认挂单</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gift -->
+<div class="modal-mask" id="giftModal">
+  <div class="modal">
+    <div class="modal-header"><h3>转赠藏品</h3><button class="modal-close" onclick="hideModal('giftModal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="giftTokenId">
+      <div class="form-group"><label class="form-label">接收方用户名</label>
+        <input class="form-input" id="giftTo" placeholder="请输入对方用户名"></div>
+      <div class="form-group"><label class="form-label">留言 (可选)</label>
+        <textarea class="form-textarea" id="giftMsg" rows="3" placeholder="给TA留句话..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="hideModal('giftModal')">取消</button>
+      <button class="btn btn-primary" onclick="doGift()">确认转赠</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+const NFTS = [
+  {name:'创世之眼',desc:'混沌初开洞察一切的神秘之眼',price:888,cat:'艺术'},
+  {name:'数字凤凰',desc:'涅槃重生烈焰凤凰',price:666,cat:'神兽'},
+  {name:'月光麒麟',desc:'祥瑞神兽招财纳福',price:1288,cat:'神兽'},
+  {name:'星空龙纹',desc:'浩瀚星空中升腾的祥龙',price:1688,cat:'神兽'},
+  {name:'樱花少女',desc:'春日限定樱花主题',price:520,cat:'主题'},
+  {name:'赛博朋克2077',desc:'未来都市的霓虹诗篇',price:999,cat:'艺术'},
+  {name:'敦煌飞天',desc:'千年文化传承瑰宝',price:2888,cat:'文化'},
+  {name:'机械心脏',desc:'蒸汽朋克风格的跳动之心',price:777,cat:'机械'},
+  {name:'深海之珠',desc:'万米深海的神秘珍珠',price:1999,cat:'自然'},
+  {name:'独角兽梦',desc:'独角兽的梦幻漫游',price:1314,cat:'神兽'},
+  {name:'招财猫',desc:'招财进宝好运连连',price:365,cat:'神兽'},
+  {name:'山海经九尾狐',desc:'上古神兽九尾灵狐',price:1888,cat:'神兽'}
+];
+
+const CONFIG_LEVELS = [];
+let CURRENT_VIEW = 'home';
+let marketPage = 1;
+
+async function main() {
+  try {
+    const lr = await api('GET', '/api/levels');
+    if (lr.code === 0) CONFIG_LEVELS.push(...(lr.data || []));
+  } catch(e) {}
+  renderUserArea();
+  bindNav();
+  renderHome();
+  initSeed();
+}
+
+async function initSeed() {
+  try {
+    const r = await api('GET', '/api/collections', { pageSize: 1 });
+    if (r.code === 0 && r.data.list.length === 0) {
+      const list = NFTS.map((n, i) => ({
+        name: n.name, description: n.desc, category: n.cat,
+        original_price: n.price, total_supply: Math.floor(Math.random() * 50) + 10,
+        per_user_limit: 3,
+        start_sale_time: Date.now() + (i < 3 ? 0 : i * 60000),
+        image_url: '', status: 1
+      }));
+      const adminReg = await api('POST', '/api/user/register', { username: 'creator01', nickname: '官方创作室', password: '123456' });
+      if (adminReg.code === 0) {
+        Store.setToken(adminReg.data.token);
+        await api('POST', '/api/collections/import', { list });
+        Store.clear();
+        setTimeout(() => toast('已初始化演示数据', 'success'), 500);
+      }
+    }
+  } catch(e) { console.log(e); }
+}
+
+function bindNav() {
+  document.querySelectorAll('#mainNav .nav-btn').forEach(b => {
+    b.onclick = () => switchView(b.dataset.view);
+  });
+}
+
+function switchView(v) {
+  CURRENT_VIEW = v;
+  document.querySelectorAll('#mainNav .nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  const map = { home: renderHome, market: renderMarket, secondary: renderSecondary, rank: renderRank, mine: renderMine };
+  map[v || CURRENT_VIEW]();
+}
+
+function renderUserArea() {
+  const u = Store.getUser();
+  const area = document.getElementById('userArea');
+  const navMine = document.getElementById('navMine');
+  if (!u) {
+    navMine.style.display = 'none';
+    area.innerHTML = `<button class="btn btn-outline btn-sm" onclick="showModal('loginModal')">登录</button>
+      <button class="btn btn-primary btn-sm" onclick="showModal('registerModal')">注册</button>`;
+    return;
+  }
+  navMine.style.display = '';
+  const first = (u.nickname || u.username).charAt(0).toUpperCase();
+  area.innerHTML = `
+    <div class="balance-chip">💰 ${fmtMoney(u.balance)}</div>
+    <span class="level-badge">Lv.${u.level}</span>
+    <div class="avatar" onclick="toggleMenu('userMenu')">${first}
+      <div class="avatar-menu" id="userMenu">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);margin-bottom:6px">
+          <div style="font-weight:700">${u.nickname || u.username}</div>
+          <div style="color:var(--text-muted);font-size:12px;margin-top:4px">持仓: ${u.total_holdings || 0} 件</div>
+        </div>
+        <button onclick="showModal('rechargeModal');hideMenu('userMenu')">💳 账户充值</button>
+        <button onclick="hideMenu('userMenu');switchView('mine')">📦 我的藏品</button>
+        <button onclick="hideMenu('userMenu');showMyOrders()">🧾 我的订单</button>
+        <button onclick="hideMenu('userMenu');showReceivedGifts()">🎁 收到的转赠</button>
+        <button onclick="hideMenu('userMenu');showImportDemo()">⚡ 演示-批量导入</button>
+        <button onclick="logout()" style="color:var(--danger)">🚪 退出登录</button>
+      </div>
+    </div>`;
+}
+function toggleMenu(id) { document.getElementById(id).classList.toggle('show'); }
+function hideMenu(id) { document.getElementById(id).classList.remove('show'); }
+
+async function refreshUser() {
+  try {
+    const r = await api('GET', '/api/user/info');
+    if (r.code === 0) { Store.setUser(r.data); renderUserArea(); }
+  } catch(e) {}
+}
+
+async function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPwd').value;
+  if (!u || !p) return toast('请填写完整信息', 'warning');
+  const r = await api('POST', '/api/user/login', { username: u, password: p });
+  if (r.code === 0) {
+    Store.setToken(r.data.token); Store.setUser(r.data.user);
+    toast('登录成功！赠送¥10,000体验金', 'success');
+    hideModal('loginModal'); renderUserArea();
+  } else toast(r.message, 'error');
+}
+
+async function doRegister() {
+  const u = document.getElementById('regUser').value.trim();
+  const n = document.getElementById('regNick').value.trim();
+  const p = document.getElementById('regPwd').value;
+  if (!u || !p) return toast('请填写完整', 'warning');
+  const r = await api('POST', '/api/user/register', { username: u, nickname: n, password: p });
+  if (r.code === 0) {
+    Store.setToken(r.data.token); Store.setUser(r.data.user);
+    toast('注册成功！赠送¥10,000体验金', 'success');
+    hideModal('registerModal'); renderUserArea();
+  } else toast(r.message, 'error');
+}
+
+async function doRecharge() {
+  const v = parseFloat(document.getElementById('rechargeAmount').value);
+  if (!v || v <= 0) return toast('请输入金额', 'warning');
+  const r = await api('POST', '/api/user/recharge', { amount: v });
+  if (r.code === 0) {
+    const u = Store.getUser(); u.balance = r.data.balance; Store.setUser(u);
+    toast('充值成功', 'success'); hideModal('rechargeModal'); renderUserArea();
+  } else toast(r.message, 'error');
+}
+
+function logout() { Store.clear(); toast('已退出登录'); setTimeout(() => location.reload(), 500); }
+
+/* ========== HOME ========== */
+async function renderHome() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <section class="hero">
+      <h1>探索数字藏品的无限可能</h1>
+      <p>唯一标识 · 权属可追溯 · 安全交易 · 限量珍藏</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="switchView('market')">🔥 立即探索首发</button>
+        <button class="btn btn-outline" onclick="switchView('secondary')">💱 二手市场</button>
+        <button class="btn btn-outline" onclick="switchView('rank')">🏆 持仓排行</button>
+      </div>
+      <div class="hero-stats" id="homeStats">
+        <div class="stat-card"><div class="num">--</div><div class="label">总用户数</div></div>
+        <div class="stat-card"><div class="num">--</div><div class="label">藏品总数</div></div>
+        <div class="stat-card"><div class="num">--</div><div class="label">交易总额</div></div>
+        <div class="stat-card"><div class="num">--</div><div class="label">权属链记录</div></div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-title"><h2>🔥 热门发售</h2>
+        <div class="section-actions"><button class="btn btn-outline btn-sm" onclick="switchView('market')">查看全部 →</button></div>
+      </div>
+      <div class="nft-grid" id="hotList"></div>
+    </section>
+    <section class="section" style="padding-top:0">
+      <div class="section-title"><h2>💱 最新挂单</h2>
+        <div class="section-actions"><button class="btn btn-outline btn-sm" onclick="switchView('secondary')">查看全部 →</button></div>
+      </div>
+      <div class="nft-grid" id="newListing"></div>
+    </section>`;
+  try { loadHomeData(); } catch(e) {}
+}
+
+async function loadHomeData() {
+  try {
+    await new Promise(r => setTimeout(r, 100));
+    if (!document.getElementById('hotList')) return;
+    const [colR, listR, rankR] = await Promise.all([
+      api('GET', '/api/collections', { status: 1, pageSize: 8, sort: 'hot' }),
+      api('GET', '/api/listings', { pageSize: 8 }),
+      api('GET', '/api/rank/holdings', { limit: 5 })
+    ]);
+    const hl = document.getElementById('hotList');
+    const nl = document.getElementById('newListing');
+    if (hl) hl.innerHTML = (colR.data?.list || []).map(renderNftCard).join('') || emptyHtml('暂无藏品');
+    if (nl) nl.innerHTML = (listR.data?.list || []).map(renderListingCard).join('') || emptyHtml('暂无挂单');
+    const statsEl = document.getElementById('homeStats');
+    if (statsEl && statsEl.children && statsEl.children.length >= 2) {
+      statsEl.children[0].querySelector('.num').textContent = (rankR.data || []).length ? '200+' : '0+';
+      statsEl.children[1].querySelector('.num').textContent = colR.data?.total || '0+';
+    }
+  } catch(e) { console.log('loadHomeData err:', e); }
+}
+
+/* ========== MARKET ========== */
+async function renderMarket() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <section class="section">
+      <div class="section-title"><h2>🔥 首发市场</h2></div>
+      <div class="filter-bar">
+        <input id="mkKw" placeholder="搜索藏品..." style="flex:1;min-width:200px">
+        <select id="mkCat"><option value="">全部分类</option><option>艺术</option><option>神兽</option><option>文化</option><option>主题</option><option>机械</option><option>自然</option></select>
+        <select id="mkSort">
+          <option value="new">最新发布</option><option value="hot">销量优先</option>
+          <option value="price_asc">价格↑</option><option value="price_desc">价格↓</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="marketPage=1;loadMarket(true)">搜索</button>
+      </div>
+      <div class="nft-grid" id="marketList"></div>
+      <div style="text-align:center;margin-top:30px">
+        <button class="btn btn-outline btn-sm" id="mkMore" onclick="loadMarket(false)">加载更多</button>
+      </div>
+    </section>`;
+  marketPage = 1;
+  loadMarket(true);
+}
+
+async function loadMarket(reset) {
+  try {
+    const kw = document.getElementById('mkKw')?.value;
+    const cat = document.getElementById('mkCat')?.value;
+    const sort = document.getElementById('mkSort')?.value;
+    const r = await api('GET', '/api/collections', { status: 1, keyword: kw, category: cat, sort, page: marketPage, pageSize: 12 });
+    const list = r.data?.list || [];
+    const html = list.map(renderNftCard).join('');
+    const el = document.getElementById('marketList');
+    el.innerHTML = reset ? (html || emptyHtml('暂无符合条件的藏品')) : (el.innerHTML + html);
+    const more = document.getElementById('mkMore');
+    if (more) more.style.display = list.length < 12 ? 'none' : '';
+    if (!reset) marketPage++;
+    else marketPage = 2;
+  } catch(e) {}
+}
+
+/* ========== SECONDARY ========== */
+async function renderSecondary() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <section class="section">
+      <div class="section-title"><h2>💱 二手市场</h2></div>
+      <div class="filter-bar">
+        <input id="scKw" placeholder="搜索..." style="flex:1;min-width:200px">
+        <input type="number" id="scMin" placeholder="最低价" style="width:120px">
+        <input type="number" id="scMax" placeholder="最高价" style="width:120px">
+        <select id="scSort">
+          <option value="new">最新</option><option value="price_asc">价格↑</option><option value="price_desc">价格↓</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="loadSecondary()">搜索</button>
+      </div>
+      <div class="nft-grid" id="scList"></div>
+    </section>`;
+  loadSecondary();
+}
+
+async function loadSecondary() {
+  try {
+    const r = await api('GET', '/api/listings', {
+      keyword: document.getElementById('scKw')?.value,
+      minPrice: document.getElementById('scMin')?.value,
+      maxPrice: document.getElementById('scMax')?.value,
+      sort: document.getElementById('scSort')?.value,
+      pageSize: 24
+    });
+    document.getElementById('scList').innerHTML = (r.data?.list || []).map(renderListingCard).join('') || emptyHtml('暂无挂单');
+  } catch(e) {}
+}
+
+/* ========== RANK ========== */
+async function renderRank() {
+  const app = document.getElementById('app');
+  app.innerHTML = `<section class="section">
+    <div class="section-title"><h2>🏆 持仓排行榜</h2></div>
+    <div style="max-width:700px;margin:0 auto" id="rankList"></div>
+  </section>`;
+  try {
+    const r = await api('GET', '/api/rank/holdings', { limit: 30 });
+    document.getElementById('rankList').innerHTML = `<div class="rank-list">${(r.data || []).map((u, i) => `
+      <div class="rank-item ${i < 3 ? 'top' + (i + 1) : ''}">
+        <div class="rank-num">${i + 1}</div>
+        <div class="avatar" style="width:48px;height:48px;font-size:18px">${(u.nickname || u.username).charAt(0).toUpperCase()}</div>
+        <div class="rank-info">
+          <div class="rank-name">${u.nickname || u.username} <span class="level-badge" style="margin-left:8px">Lv.${u.level}</span></div>
+          <div class="rank-meta">累计消费 ${fmtMoney(u.total_spent)}</div>
+        </div>
+        <div class="rank-stats">
+          <div class="rank-value">${u.total_holdings}</div>
+          <div style="color:var(--text-muted);font-size:12px">件藏品</div>
+        </div>
+      </div>`).join('') || emptyHtml('暂无排行数据')}</div>`;
+  } catch(e) {}
+}
+
+/* ========== MINE ========== */
+async function renderMine() {
+  if (!Store.getUser()) { toast('请先登录', 'warning'); return switchView('home'); }
+  const app = document.getElementById('app');
+  app.innerHTML = `<section class="section">
+    <div class="section-title"><h2>📦 我的藏品</h2></div>
+    <div class="tabs" id="mineTabs">
+      <button class="tab active" data-tab="all">全部藏品</button>
+      <button class="tab" data-tab="list">挂单中</button>
+      <button class="tab" data-tab="log">权属流水</button>
+    </div>
+    <div id="mineContent"></div>
+  </section>`;
+  document.querySelectorAll('#mineTabs .tab').forEach(t => t.onclick = () => {
+    document.querySelectorAll('#mineTabs .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active'); loadMineData(t.dataset.tab);
+  });
+  loadMineData('all');
+}
+
+async function loadMineData(tab) {
+  const el = document.getElementById('mineContent');
+  if (tab === 'log') {
+    try {
+      const r = await api('GET', '/api/my/transactions');
+      el.innerHTML = `<table class="data-table"><thead><tr><th>时间</th><th>类型</th><th>金额</th><th>余额前</th><th>余额后</th><th>详情</th></tr></thead><tbody>${
+        (r.data || []).map(t => `<tr>
+          <td>${fmtTime(t.created_at)}</td>
+          <td>${typeBadge(t.tx_type)}</td>
+          <td style="${t.amount < 0 ? 'color:var(--danger)' : 'color:var(--success)'};font-weight:600">${t.amount < 0 ? '-' : ''}${fmtMoney(Math.abs(t.amount))}</td>
+          <td>${fmtMoney(t.balance_before)}</td>
+          <td>${fmtMoney(t.balance_after)}</td>
+          <td style="color:var(--text-muted)">${t.detail || '-'}</td>
+        </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">暂无记录</td></tr>'
+      }</tbody></table>`;
+    } catch(e) {}
+    return;
+  }
+  try {
+    const status = tab === 'list' ? 2 : undefined;
+    const r = await api('GET', '/api/my/collections', status !== undefined ? { status } : {});
+    const list = (r.data?.list || []).filter(x => tab === 'list' ? x.status === 2 : x.status !== 0);
+    el.innerHTML = list.length ? `<div class="nft-grid">${list.map(renderMyCard).join('')}</div>` : emptyHtml('暂无藏品');
+  } catch(e) {}
+}
+
+/* ========== CARDS ========== */
+function renderNftCard(c) {
+  const now = Date.now();
+  const started = c.start_sale_time <= now;
+  const ended = c.end_sale_time && c.end_sale_time < now;
+  const soldOut = c.sold_count >= c.total_supply;
+  let statusLabel, statusClass;
+  if (soldOut) { statusLabel = '已售罄'; statusClass = 'status-sold'; }
+  else if (!started) { statusLabel = '待开售'; statusClass = 'status-wait'; }
+  else if (ended) { statusLabel = '已结束'; statusClass = 'status-sold'; }
+  else { statusLabel = '发售中'; statusClass = 'status-sale'; }
+  const pct = c.total_supply > 0 ? Math.min(100, (c.sold_count / c.total_supply) * 100) : 0;
+  return `<div class="nft-card" onclick="showDetail(${c.id},'c')">
+    <div class="nft-img">${nftEmoji(c.token_id)}<span class="nft-status ${statusClass}">${statusLabel}</span></div>
+    <div class="nft-body">
+      <div class="nft-name">${c.name}</div>
+      <div class="nft-desc">${c.description || '暂无描述'}</div>
+      <div class="progress-bar" style="margin-bottom:12px"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="nft-price-row">
+        <div class="nft-price"><div class="label">价格</div><div class="amount">${fmtMoney(c.original_price)}</div></div>
+        <div class="nft-sold">${c.sold_count}/${c.total_supply} 份</div>
+      </div>
+      ${!started ? `<div class="countdown" style="margin-top:12px;justify-content:center;display:flex">${fmtTime(c.start_sale_time)} 开售</div>` : ''}
+      <div class="nft-actions">
+        <button class="btn btn-sm ${soldOut || !started || ended ? 'btn-outline' : 'btn-primary'} btn-block"
+          onclick="event.stopPropagation();${soldOut || !started || ended ? '' : `buyPrimary(${c.id})`}">
+          ${soldOut ? '已售罄' : !started ? '等待开售' : ended ? '已结束' : '立即购买'}
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderListingCard(l) {
+  return `<div class="nft-card" onclick="showDetail('${l.token_id}','l',${l.id})">
+    <div class="nft-img">${nftEmoji(l.token_id)}<span class="nft-status status-sale">二手</span></div>
+    <div class="nft-body">
+      <div class="nft-name">${l.collection_name || '未知藏品'}</div>
+      <div class="nft-desc" style="color:var(--text-muted);font-size:12px">卖家：${l.seller_nickname || '匿名'} <span class="level-badge" style="margin-left:6px">Lv.${l.seller_level || 1}</span></div>
+      <div class="nft-price-row" style="margin-top:14px">
+        <div class="nft-price"><div class="label">售价</div><div class="amount">${fmtMoney(l.price)}</div></div>
+      </div>
+      <div class="nft-actions">
+        <button class="btn btn-primary btn-sm btn-block" onclick="event.stopPropagation();buySecondary(${l.id})">立即购买</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderMyCard(c) {
+  const statusMap = { 1: '持有中', 2: '挂单中', 3: '转赠中' };
+  const tid = c.token_id || c.tkn || '';
+  return `<div class="nft-card">
+    <div class="nft-img">${nftEmoji(tid)}<span class="nft-status ${c.status === 1 ? 'status-sale' : 'status-wait'}">${statusMap[c.status] || '持有'}</span></div>
+    <div class="nft-body">
+      <div class="nft-name">${c.name || '未知藏品'}</div>
+      <div style="font-size:12px;color:var(--text-muted);font-family:monospace;margin-bottom:10px">${tid}</div>
+      <div class="nft-price-row">
+        <div class="nft-price"><div class="label">购入价</div><div class="amount" style="font-size:16px">${fmtMoney(c.acquire_price)}</div></div>
+        <div class="nft-sold">${typeBadge(c.acquire_type)}</div>
+      </div>
+      <div class="nft-actions">
+        ${c.status === 1 ? `<button class="btn btn-primary btn-sm" onclick="openListing('${tid}')">挂单</button>
+        <button class="btn btn-outline btn-sm" onclick="openGift('${tid}')">转赠</button>` : ''}
+        ${c.status === 2 ? `<button class="btn btn-danger btn-sm" onclick="cancelMyListing(${c.id},'${tid}')">取消挂单</button>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function emptyHtml(msg) { return `<div class="empty-state" style="grid-column:1/-1"><div class="icon">📭</div>${msg}</div>`; }
+
+/* ========== DETAIL ========== */
+async function showDetail(id, type, listingId) {
+  const body = document.getElementById('detailBody');
+  body.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted)">加载中...</div>';
+  showModal('detailModal');
+  try {
+    let tokenId = id, collectionId = null, listingPrice = null;
+    if (type === 'l') {
+      const lr = await api('GET', '/api/listings', { pageSize: 100 });
+      const item = (lr.data?.list || []).find(l => l.id === listingId);
+      if (item) { tokenId = item.token_id; listingPrice = item.price; }
+    }
+    const dr = await api('GET', `/api/collections/${type === 'c' ? id : tokenId}`);
+    if (dr.code !== 0) { body.innerHTML = `<div class="empty-state"><div class="icon">❌</div>${dr.message}</div>`; return; }
+    const c = dr.data;
+    const hr = await api('GET', `/api/collections/token/${c.token_id}/history`);
+    const history = hr.data || [];
+    const u = Store.getUser();
+    const isOwner = u && history[0]?.to_user_id === u.id;
+    const price = listingPrice || c.original_price;
+    const now = Date.now();
+    const started = c.start_sale_time <= now;
+    const pct = c.total_supply ? Math.min(100, (c.sold_count / c.total_supply) * 100) : 0;
+    body.innerHTML = `
+      <div class="detail-grid">
+        <div class="detail-img">${nftEmoji(c.token_id)}</div>
+        <div class="detail-info">
+          <h1>${c.name}</h1>
+          <div class="detail-token">#${c.token_id}</div>
+          <p style="color:var(--text-muted);margin:14px 0">${c.description || '暂无描述'}</p>
+          <div class="detail-meta">
+            <div class="meta-item"><div class="meta-label">${listingId ? '挂单售价' : '发售价'}</div><div class="meta-value" style="color:var(--secondary)">${fmtMoney(price)}</div></div>
+            <div class="meta-item"><div class="meta-label">分类</div><div class="meta-value" style="font-size:14px">${c.category || '-'}</div></div>
+            <div class="meta-item"><div class="meta-label">库存进度</div><div class="meta-value" style="font-size:14px">${c.sold_count}/${c.total_supply}</div></div>
+            <div class="meta-item"><div class="meta-label">限购</div><div class="meta-value" style="font-size:14px">每人${c.per_user_limit}份</div></div>
+          </div>
+          <div class="detail-progress">
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+            <div class="progress-info"><span>已发售 ${pct.toFixed(1)}%</span><span>${fmtTime(c.start_sale_time)} 开售</span></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:24px;flex-wrap:wrap">
+            ${!listingId ? `<button class="btn btn-primary" id="buyBtn" ${!started ? 'disabled' : ''} onclick="buyPrimary(${c.id})">${!started ? '尚未开售' : '立即购买'}</button>` : `<button class="btn btn-primary" onclick="buySecondary(${listingId})">购买此挂单</button>`}
+            ${isOwner ? `<button class="btn btn-outline" onclick="hideModal('detailModal');openListing('${c.token_id}')">挂单出售</button>
+            <button class="btn btn-outline" onclick="hideModal('detailModal');openGift('${c.token_id}')">转赠好友</button>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="chain-timeline">
+        <h3 style="margin-bottom:20px">🔗 权属链记录 (共${history.length}条)</h3>
+        ${history.map((h, i) => `
+          <div class="timeline-item">
+            <div class="timeline-time">${fmtTime(h.timestamp)} · 区块 #${h.block_height}</div>
+            <div class="timeline-title">${typeBadge(h.ownership_type)} ${h.price > 0 ? '· ' + fmtMoney(h.price) : ''}</div>
+            <div class="timeline-detail">FROM: ${h.from_address || 'SYSTEM'} → TO: ${h.to_address}</div>
+            <div class="timeline-hash">TX: ${h.tx_hash}${i < history.length - 1 ? ' | PREV: ' + h.prev_hash : ''}</div>
+          </div>`).join('') || '<div style="color:var(--text-muted);padding:20px">暂无权属记录</div>'}
+      </div>`;
+  } catch(e) { console.log(e); body.innerHTML = `<div class="empty-state"><div class="icon">❌</div>加载失败</div>`; }
+}
+
+/* ========== ACTIONS ========== */
+async function buyPrimary(id) {
+  if (!Store.getUser()) { toast('请先登录', 'warning'); return showModal('loginModal'); }
+  if (!confirm('确认购买？')) return;
+  try {
+    const r = await api('POST', '/api/collections/buy', { collection_id: id, quantity: 1 });
+    if (r.code === 0) {
+      toast('购买成功！订单号: ' + r.data.order_no, 'success');
+      refreshUser(); hideModal('detailModal');
+      const map = { home: renderHome, market: renderMarket, secondary: renderSecondary, rank: renderRank, mine: renderMine };
+      map[CURRENT_VIEW]();
+    } else toast(r.message, 'error');
+  } catch(e) { toast('网络错误', 'error'); }
+}
+
+async function buySecondary(id) {
+  if (!Store.getUser()) { toast('请先登录', 'warning'); return showModal('loginModal'); }
+  if (!confirm('确认购买此挂单？')) return;
+  try {
+    const r = await api('POST', '/api/listings/buy', { listing_id: id });
+    if (r.code === 0) {
+      toast('购买成功！', 'success');
+      refreshUser(); hideModal('detailModal');
+      const map = { home: renderHome, market: renderMarket, secondary: renderSecondary, rank: renderRank, mine: renderMine };
+      map[CURRENT_VIEW]();
+    } else toast(r.message, 'error');
+  } catch(e) { toast('网络错误', 'error'); }
+}
+
+function openListing(tokenId) {
+  if (!Store.getUser()) return toast('请先登录', 'warning');
+  document.getElementById('listTokenId').value = tokenId;
+  document.getElementById('listPrice').value = '';
+  showModal('listingModal');
+}
+
+async function doListing() {
+  const tid = document.getElementById('listTokenId').value;
+  const price = parseFloat(document.getElementById('listPrice').value);
+  const hours = parseInt(document.getElementById('listHours').value);
+  if (!price || price <= 0) return toast('请输入价格', 'warning');
+  try {
+    const r = await api('POST', '/api/listings', { token_id: tid, price, expire_hours: hours });
+    if (r.code === 0) {
+      toast(r.data.risk_flag ? '挂单成功，等待风控审核' : '挂单成功！', 'success');
+      hideModal('listingModal');
+      loadMineData('list');
+    } else toast(r.message, 'error');
+  } catch(e) { toast('网络错误', 'error'); }
+}
+
+async function cancelMyListing(ucid, tid) {
+  if (!confirm('确认取消挂单？')) return;
+  try {
+    const lr = await api('GET', '/api/listings', { status: '', pageSize: 500 });
+    const item = (lr.data?.list || []).find(l => l.token_id === tid && l.status === 'ACTIVE' || l.status === 'PENDING_REVIEW');
+    if (!item) return toast('未找到挂单', 'error');
+    const r = await api('POST', '/api/listings/cancel', { id: item.id });
+    if (r.code === 0) { toast('已取消挂单', 'success'); loadMineData('list'); }
+    else toast(r.message, 'error');
+  } catch(e) { toast('操作失败', 'error'); }
+}
+
+function openGift(tokenId) {
+  if (!Store.getUser()) return toast('请先登录', 'warning');
+  document.getElementById('giftTokenId').value = tokenId;
+  document.getElementById('giftTo').value = '';
+  document.getElementById('giftMsg').value = '';
+  showModal('giftModal');
+}
+
+async function doGift() {
+  const to = document.getElementById('giftTo').value.trim();
+  const msg = document.getElementById('giftMsg').value;
+  const tid = document.getElementById('giftTokenId').value;
+  if (!to) return toast('请输入接收方', 'warning');
+  try {
+    const r = await api('POST', '/api/gifts', { to_username: to, token_id: tid, message: msg });
+    if (r.code === 0) { toast('转赠已发起，等待对方领取', 'success'); hideModal('giftModal'); loadMineData('all'); }
+    else toast(r.message, 'error');
+  } catch(e) { toast('网络错误', 'error'); }
+}
+
+async function showReceivedGifts() {
+  if (!Store.getUser()) return toast('请先登录', 'warning');
+  const app = document.getElementById('app');
+  app.innerHTML = `<section class="section">
+    <div class="section-title"><h2>🎁 收到的转赠</h2>
+      <div class="section-actions"><button class="btn btn-outline btn-sm" onclick="switchView('mine')">返回我的</button></div>
+    </div>
+    <div id="giftList"></div></section>`;
+  try {
+    const r = await api('GET', '/api/gifts/received');
+    const list = r.data || [];
+    document.getElementById('giftList').innerHTML = `<table class="data-table">
+      <thead><tr><th>藏品</th><th>来自</th><th>留言</th><th>时间</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody>${list.map(g => `<tr>
+        <td>${g.collection_name || g.token_id}<br><span style="color:var(--text-muted);font-size:12px">${g.token_id}</span></td>
+        <td>${g.from_nickname}</td>
+        <td style="color:var(--text-muted)">${g.message || '-'}</td>
+        <td>${fmtTime(g.created_at)}</td>
+        <td>${statusBadge(g.status)}</td>
+        <td>${g.status === 'PENDING' ? `<button class="btn btn-primary btn-sm" onclick="claimGift('${g.gift_no}')">领取</button>` : '-'}</td>
+      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">暂无转赠</td></tr>'}</tbody></table>`;
+  } catch(e) {}
+}
+
+async function claimGift(no) {
+  try {
+    const r = await api('POST', '/api/gifts/claim', { gift_no: no });
+    if (r.code === 0) { toast('领取成功！', 'success'); showReceivedGifts(); refreshUser(); }
+    else toast(r.message, 'error');
+  } catch(e) { toast('操作失败', 'error'); }
+}
+
+async function showMyOrders() {
+  if (!Store.getUser()) return toast('请先登录', 'warning');
+  const app = document.getElementById('app');
+  app.innerHTML = `<section class="section">
+    <div class="section-title"><h2>🧾 我的订单</h2>
+      <div class="section-actions"><button class="btn btn-outline btn-sm" onclick="switchView('mine')">返回我的</button></div>
+    </div>
+    <div class="tabs" id="orderTabs">
+      <button class="tab active" data-s="">全部</button>
+      <button class="tab" data-s="PAID">已支付</button>
+      <button class="tab" data-s="PENDING">待处理</button>
+      <button class="tab" data-s="CANCELLED">已取消</button>
+    </div>
+    <div id="orderList"></div></section>`;
+  document.querySelectorAll('#orderTabs .tab').forEach(t => t.onclick = () => {
+    document.querySelectorAll('#orderTabs .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active'); loadOrders(t.dataset.s);
+  });
+  loadOrders('');
+}
+
+async function loadOrders(s) {
+  try {
+    const r = await api('GET', '/api/orders', s ? { status: s } : {});
+    document.getElementById('orderList').innerHTML = `<table class="data-table">
+      <thead><tr><th>订单号</th><th>藏品</th><th>类型</th><th>数量</th><th>金额</th><th>时间</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody>${(r.data?.list || []).map(o => `<tr>
+        <td style="font-family:monospace;font-size:12px">${o.order_no}</td>
+        <td>${o.collection_name || o.token_id}</td>
+        <td>${typeBadge(o.order_type)}</td>
+        <td>${o.quantity}</td>
+        <td style="color:var(--danger);font-weight:600">${fmtMoney(o.total_amount)}</td>
+        <td>${fmtTime(o.created_at)}</td>
+        <td>${statusBadge(o.status)}</td>
+        <td>${['PENDING','PENDING_REVIEW'].includes(o.status) ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.order_no}')">取消</button>` : '-'}</td>
+      </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)">暂无订单</td></tr>'}</tbody></table>`;
+  } catch(e) {}
+}
+
+async function cancelOrder(no) {
+  if (!confirm('确认取消订单？')) return;
+  try {
+    const r = await api('POST', '/api/orders/cancel', { order_no: no });
+    if (r.code === 0) { toast('已取消', 'success'); loadOrders(''); refreshUser(); }
+    else toast(r.message, 'error');
+  } catch(e) { toast('操作失败', 'error'); }
+}
+
+async function showImportDemo() {
+  if (!Store.getUser()) return;
+  if (!confirm('将导入 5 件测试藏品？')) return;
+  try {
+    const list = [];
+    for (let i = 0; i < 5; i++) {
+      const n = NFTS[Math.floor(Math.random() * NFTS.length)];
+      list.push({ name: n.name + '#' + Math.floor(Math.random() * 10000), description: n.desc, category: n.cat,
+        original_price: n.price, total_supply: 30, per_user_limit: 5, start_sale_time: Date.now(), status: 1 });
+    }
+    const r = await api('POST', '/api/collections/import', { list });
+    const success = (r.data?.results || []).filter(x => x.code === 0).length;
+    toast(`导入成功 ${success} / 5 件藏品`, 'success');
+  } catch(e) { toast('导入失败', 'error'); }
+}
+
+main();
+</script>
+</body>
+</html>

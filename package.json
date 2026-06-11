@@ -1,0 +1,21 @@
+{
+  "name": "nft-trading-system",
+  "version": "1.0.0",
+  "description": "数字藏品网页交易系统",
+  "main": "server/core.js",
+  "scripts": {
+    "start": "node start.js",
+    "core": "node server/core.js",
+    "web": "node server/web.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.6.0",
+    "body-parser": "^1.20.5",
+    "cors": "^2.8.6",
+    "express": "^4.22.2",
+    "jsonwebtoken": "^9.0.3",
+    "md5": "^2.3.0",
+    "node-cache": "^5.1.2",
+    "uuid": "^9.0.1"
+  }
+}
