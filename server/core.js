@@ -9,7 +9,8 @@ const {
 } = require('./user');
 const {
   createCollection, importCollectionsBatch, reviewCollection,
-  listCollections, getCollectionDetail, buyPrimary, cancelOrder, logAdminAction
+  listCollections, getCollectionDetail, buyPrimary, cancelOrder, logAdminAction,
+  getPurchaseInfo
 } = require('./collection');
 const {
   createListing, cancelListing, listListings, buySecondary,
@@ -90,6 +91,10 @@ app.get('/api/collections', (req, res) => {
 
 app.get('/api/collections/:id', (req, res) => {
   res.json(getCollectionDetail(req.params.id));
+});
+
+app.get('/api/collections/:id/purchase-info', authMiddleware, (req, res) => {
+  res.json(getPurchaseInfo(req.user.id, req.params.id));
 });
 
 app.get('/api/collections/token/:tokenId/history', (req, res) => {

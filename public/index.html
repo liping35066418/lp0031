@@ -136,6 +136,32 @@
   </div>
 </div>
 
+<!-- Buy Primary -->
+<div class="modal-mask" id="buyModal">
+  <div class="modal">
+    <div class="modal-header"><h3>确认购买</h3><button class="modal-close" onclick="hideModal('buyModal')">×</button></div>
+    <div class="modal-body" id="buyModalBody">
+      <div style="text-align:center;padding:40px;color:var(--text-muted)">加载中...</div>
+    </div>
+    <div class="modal-footer" id="buyModalFooter">
+      <button class="btn btn-outline" onclick="hideModal('buyModal')">取消</button>
+      <button class="btn btn-primary" id="buyConfirmBtn" onclick="doBuyPrimary()">确认购买</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Result -->
+<div class="modal-mask" id="orderResultModal">
+  <div class="modal">
+    <div class="modal-header"><h3>下单结果</h3><button class="modal-close" onclick="hideModal('orderResultModal')">×</button></div>
+    <div class="modal-body" id="orderResultBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="hideModal('orderResultModal');switchView('mine')">查看我的藏品</button>
+      <button class="btn btn-primary" onclick="hideModal('orderResultModal')">完成</button>
+    </div>
+  </div>
+</div>
+
 <script src="app.js"></script>
 <script>
 const NFTS = [
@@ -189,6 +215,33 @@ async function initSeed() {
     }
   } catch(e) { console.log(e); }
 }
+
+/* ========== DISCOUNT HELPERS ========== */
+function getDiscount(level) {
+  const lv = CONFIG_LEVELS.find(l => l.level === level) || CONFIG_LEVELS[0];
+  return lv ? lv.discount : 1;
+}
+function getLevelInfo(level) {
+  return CONFIG_LEVELS.find(l => l.level === level) || CONFIG_LEVELS[0];
+}
+function calcDiscountedPrice(originalPrice, level) {
+  const discount = getDiscount(level);
+  return Math.round(originalPrice * discount * 100) / 100;
+}
+function renderPriceBlock(originalPrice, userLevel) {
+  const u = Store.getUser();
+  const level = userLevel !== undefined ? userLevel : (u ? u.level : 1);
+  const discount = getDiscount(level);
+  if (discount >= 1) {
+    return `<div class="nft-price"><div class="label">价格</div><div class="amount">${fmtMoney(originalPrice)}</div></div>`;
+  }
+  const discounted = calcDiscountedPrice(originalPrice, level);
+  const lvInfo = getLevelInfo(level);
+  const saveAmt = Math.round((originalPrice - discounted) * 100) / 100;
+  return `<div class="nft-price"><div class="label">价格 <span class="discount-tag">Lv${level} ${Math.round(discount * 100)}折</span></div><div class="price-block"><span class="price-original">${fmtMoney(originalPrice)}</span><span class="price-discounted">${fmtMoney(discounted)}</span></div></div>`;
+}
+
+let CURRENT_BUY = null;
 
 function bindNav() {
   document.querySelectorAll('#mainNav .nav-btn').forEach(b => {
@@ -499,7 +552,7 @@ function renderNftCard(c) {
       <div class="nft-desc">${c.description || '暂无描述'}</div>
       <div class="progress-bar" style="margin-bottom:12px"><div class="progress-fill" style="width:${pct}%"></div></div>
       <div class="nft-price-row">
-        <div class="nft-price"><div class="label">价格</div><div class="amount">${fmtMoney(c.original_price)}</div></div>
+        ${renderPriceBlock(c.original_price)}
         <div class="nft-sold">${c.sold_count}/${c.total_supply} 份</div>
       </div>
       ${!started ? `<div class="countdown" style="margin-top:12px;justify-content:center;display:flex">${fmtTime(c.start_sale_time)} 开售</div>` : ''}
@@ -575,6 +628,15 @@ async function showDetail(id, type, listingId) {
     const now = Date.now();
     const started = c.start_sale_time <= now;
     const pct = c.total_supply ? Math.min(100, (c.sold_count / c.total_supply) * 100) : 0;
+    const user = Store.getUser();
+    const level = user ? user.level : 1;
+    const discount = getDiscount(level);
+    const discountedPrice = calcDiscountedPrice(c.original_price, level);
+    const priceHtml = listingId
+      ? `<div class="meta-value" style="color:var(--secondary)">${fmtMoney(price)}</div>`
+      : (discount < 1
+          ? `<div class="meta-value" style="color:var(--secondary)"><span style="color:var(--text-muted);text-decoration:line-through;font-size:14px;font-weight:500;margin-right:8px">${fmtMoney(c.original_price)}</span>${fmtMoney(discountedPrice)} <span class="discount-tag" style="margin-left:6px">Lv${level} ${Math.round(discount * 100)}折</span></div>`
+          : `<div class="meta-value" style="color:var(--secondary)">${fmtMoney(price)}</div>`);
     body.innerHTML = `
       <div class="detail-grid">
         <div class="detail-img">${nftEmoji(c.token_id)}</div>
@@ -583,7 +645,7 @@ async function showDetail(id, type, listingId) {
           <div class="detail-token">#${c.token_id}</div>
           <p style="color:var(--text-muted);margin:14px 0">${c.description || '暂无描述'}</p>
           <div class="detail-meta">
-            <div class="meta-item"><div class="meta-label">${listingId ? '挂单售价' : '发售价'}</div><div class="meta-value" style="color:var(--secondary)">${fmtMoney(price)}</div></div>
+            <div class="meta-item"><div class="meta-label">${listingId ? '挂单售价' : '发售价'}</div>${priceHtml}</div>
             <div class="meta-item"><div class="meta-label">分类</div><div class="meta-value" style="font-size:14px">${c.category || '-'}</div></div>
             <div class="meta-item"><div class="meta-label">库存进度</div><div class="meta-value" style="font-size:14px">${c.sold_count}/${c.total_supply}</div></div>
             <div class="meta-item"><div class="meta-label">限购</div><div class="meta-value" style="font-size:14px">每人${c.per_user_limit}份</div></div>
@@ -615,16 +677,212 @@ async function showDetail(id, type, listingId) {
 /* ========== ACTIONS ========== */
 async function buyPrimary(id) {
   if (!Store.getUser()) { toast('请先登录', 'warning'); return showModal('loginModal'); }
-  if (!confirm('确认购买？')) return;
+  CURRENT_BUY = { collectionId: id, quantity: 1, info: null };
+  document.getElementById('buyModalBody').innerHTML = '<div style="text-align:center;padding:60px;color:var(--text-muted)">加载中...</div>';
+  document.getElementById('buyConfirmBtn').disabled = true;
+  showModal('buyModal');
   try {
-    const r = await api('POST', '/api/collections/buy', { collection_id: id, quantity: 1 });
+    const r = await api('GET', `/api/collections/${id}/purchase-info`);
+    if (r.code !== 0) { hideModal('buyModal'); return toast(r.message, 'error'); }
+    CURRENT_BUY.info = r.data;
+    renderBuyModal();
+  } catch(e) { hideModal('buyModal'); toast('网络错误', 'error'); }
+}
+
+function renderBuyModal() {
+  const info = CURRENT_BUY.info;
+  const body = document.getElementById('buyModalBody');
+  const btn = document.getElementById('buyConfirmBtn');
+  const col = info.collection;
+  const user = info.user;
+  const maxBuy = info.max_buyable;
+  const disabled = !info.on_sale || info.is_limit_reached || info.is_sold_out || maxBuy <= 0;
+
+  let disableReason = '';
+  if (info.is_limit_reached) disableReason = '您已达到每人限购数量';
+  else if (info.is_sold_out) disableReason = '藏品已售罄';
+  else if (!info.on_sale) disableReason = info.sale_reason || '暂不可购买';
+  else if (maxBuy <= 0) disableReason = '暂无可购买数量';
+
+  const qty = Math.max(1, Math.min(CURRENT_BUY.quantity || 1, maxBuy || 1));
+  CURRENT_BUY.quantity = qty;
+  const unitPrice = user.discounted_price;
+  const totalAmount = Math.round(unitPrice * qty * 100) / 100;
+  const balanceAfter = Math.round((user.balance - totalAmount) * 100) / 100;
+  const balanceInsufficient = user.balance < totalAmount;
+
+  const savePerItem = Math.round((col.original_price - unitPrice) * 100) / 100;
+  const totalSave = Math.round(savePerItem * qty * 100) / 100;
+  const discountPct = Math.round(user.discount * 100);
+
+  const saveText = savePerItem > 0 ? ` (省${fmtMoney(totalSave)})` : '';
+  const priceBadge = savePerItem > 0 ? ` <span class="discount-tag">Lv${user.level} ${discountPct}折</span>` : '';
+
+  const originalTotal = Math.round(col.original_price * qty * 100) / 100;
+  const originalLine = savePerItem > 0 ? `<span style="color:var(--text-muted);text-decoration:line-through;font-size:12px;margin-right:6px">${fmtMoney(originalTotal)}</span>` : '';
+
+  body.innerHTML = `
+    <div class="buy-title-row">
+      <div class="buy-title-emoji">${nftEmoji(col.token_id)}</div>
+      <div>
+        <div class="buy-title-name">${col.name}</div>
+        <div class="buy-title-meta">库存 ${info.remaining_stock} · 已购 ${info.user_bought}/${col.per_user_limit}</div>
+      </div>
+    </div>
+    <div class="buy-info-card ${disabled ? 'buy-disabled-overlay' : ''}">
+      ${disabled ? `<div class="buy-disabled-mask"><div class="buy-disabled-msg"><div class="icon">🚫</div><div class="text">${disableReason}</div></div></div>` : ''}
+      <div class="buy-info-row">
+        <span class="label">会员等级</span>
+        <span class="value"><span class="level-badge">Lv.${user.level}</span> ${user.level_name}${priceBadge}</span>
+      </div>
+      <div class="buy-info-row">
+        <span class="label">单价</span>
+        <span class="value">
+          ${savePerItem > 0 ? `<span style="color:var(--text-muted);text-decoration:line-through;font-size:13px;margin-right:8px">${fmtMoney(col.original_price)}</span>` : ''}
+          <span style="color:var(--secondary);font-weight:700">${fmtMoney(unitPrice)}</span>
+          ${savePerItem > 0 ? `<span class="discount-tag" style="margin-left:6px">-${fmtMoney(savePerItem)}</span>` : ''}
+        </span>
+      </div>
+      <div class="buy-info-row">
+        <span class="label">购买数量</span>
+        <span class="value">
+          <div class="qty-stepper">
+            <button onclick="changeBuyQty(-1)" id="qtyMinus" ${qty <= 1 || disabled ? 'disabled' : ''}>−</button>
+            <input type="number" id="qtyInput" value="${qty}" min="1" max="${maxBuy}" ${disabled ? 'disabled' : ''} onchange="setBuyQty(this.value)">
+            <button onclick="changeBuyQty(1)" id="qtyPlus" ${qty >= maxBuy || disabled ? 'disabled' : ''}>+</button>
+          </div>
+          <span style="color:var(--text-muted);font-size:12px;margin-left:10px">最多 ${maxBuy} 件</span>
+        </span>
+      </div>
+      <div class="buy-info-row">
+        <span class="label">应付总额${saveText}</span>
+        <span class="value highlight">${originalLine}${fmtMoney(totalAmount)}</span>
+      </div>
+      <div class="buy-info-row">
+        <span class="label">当前余额</span>
+        <span class="value ${balanceInsufficient ? 'danger' : ''}">${fmtMoney(user.balance)}</span>
+      </div>
+      <div class="buy-info-row">
+        <span class="label">扣款后余额</span>
+        <span class="value ${balanceAfter < 0 ? 'danger' : 'success'}">${fmtMoney(balanceAfter)}</span>
+      </div>
+      ${balanceInsufficient ? `<div style="padding-top:12px;color:var(--danger);font-size:13px;text-align:center">⚠️ 余额不足，请先充值</div>` : ''}
+    </div>
+  `;
+
+  btn.disabled = disabled || balanceInsufficient;
+  btn.textContent = disabled ? disableReason : (balanceInsufficient ? '余额不足' : '确认购买');
+}
+
+function changeBuyQty(delta) {
+  if (!CURRENT_BUY || !CURRENT_BUY.info) return;
+  const maxBuy = CURRENT_BUY.info.max_buyable;
+  const newQty = Math.max(1, Math.min((CURRENT_BUY.quantity || 1) + delta, maxBuy));
+  CURRENT_BUY.quantity = newQty;
+  renderBuyModal();
+}
+
+function setBuyQty(val) {
+  if (!CURRENT_BUY || !CURRENT_BUY.info) return;
+  const maxBuy = CURRENT_BUY.info.max_buyable;
+  let v = parseInt(val) || 1;
+  v = Math.max(1, Math.min(v, maxBuy));
+  CURRENT_BUY.quantity = v;
+  renderBuyModal();
+}
+
+async function doBuyPrimary() {
+  if (!CURRENT_BUY || !CURRENT_BUY.info) return;
+  const btn = document.getElementById('buyConfirmBtn');
+  btn.disabled = true;
+  btn.textContent = '购买中...';
+  try {
+    const r = await api('POST', '/api/collections/buy', {
+      collection_id: CURRENT_BUY.collectionId,
+      quantity: CURRENT_BUY.quantity
+    });
     if (r.code === 0) {
-      toast('购买成功！订单号: ' + r.data.order_no, 'success');
-      refreshUser(); hideModal('detailModal');
-      const map = { home: renderHome, market: renderMarket, secondary: renderSecondary, rank: renderRank, mine: renderMine };
-      map[CURRENT_VIEW]();
-    } else toast(r.message, 'error');
-  } catch(e) { toast('网络错误', 'error'); }
+      hideModal('buyModal');
+      const oldUser = Store.getUser();
+      const oldLevel = oldUser ? oldUser.level : 1;
+      await refreshUser();
+      const newUser = Store.getUser();
+      const newLevel = newUser ? newUser.level : 1;
+      const levelUp = newLevel > oldLevel;
+      const levelInfo = getLevelInfo(newLevel);
+      showOrderResult({
+        order_no: r.data.order_no,
+        total_amount: r.data.total_amount,
+        quantity: CURRENT_BUY.quantity,
+        collection: CURRENT_BUY.info.collection,
+        level_up: levelUp,
+        old_level: oldLevel,
+        new_level: newLevel,
+        level_name: levelInfo ? levelInfo.name : '',
+        status: r.data.status || 'PAID'
+      });
+      hideModal('detailModal');
+      refreshCurrentView();
+    } else {
+      toast(r.message, 'error');
+      btn.disabled = false;
+      btn.textContent = '确认购买';
+    }
+  } catch(e) {
+    toast('网络错误', 'error');
+    btn.disabled = false;
+    btn.textContent = '确认购买';
+  }
+}
+
+function refreshCurrentView() {
+  const map = { home: renderHome, market: renderMarket, secondary: renderSecondary, rank: renderRank, mine: renderMine };
+  if (map[CURRENT_VIEW]) map[CURRENT_VIEW]();
+}
+
+function showOrderResult(data) {
+  const body = document.getElementById('orderResultBody');
+  const status = data.status || 'PAID';
+  const isPending = status === 'PENDING_REVIEW';
+  const isSuccess = status === 'PAID';
+  const statusClass = isSuccess ? 'success' : (isPending ? 'pending' : 'error');
+  const iconText = isSuccess ? '✅' : (isPending ? '⏳' : '❌');
+  const titleText = isSuccess ? '下单成功！' : (isPending ? '订单审核中' : '下单异常');
+  const subtitleText = isSuccess
+    ? `${data.collection.name} × ${data.quantity}`
+    : (isPending ? '风控审核通过后自动发货' : '请稍后重试');
+  const levelInfo = data.level_up ? `<div class="order-level-up"><div class="order-level-up-title">🎉 恭喜等级提升！</div><div class="order-level-up-desc">Lv.${data.old_level} → Lv.${data.new_level} (${data.level_name})<br>享受更高折扣和权益</div></div>` : '';
+  body.innerHTML = `
+    <div class="order-result-card">
+      <div class="order-result-icon ${statusClass}">${iconText}</div>
+      <div class="order-result-title">${titleText}</div>
+      <div class="order-result-subtitle">${subtitleText}</div>
+      <div class="order-info-grid">
+        <div class="order-info-row">
+          <span class="label">订单号</span>
+          <span class="value">${data.order_no}</span>
+        </div>
+        <div class="order-info-row">
+          <span class="label">藏品</span>
+          <span class="value" style="font-family:inherit">${data.collection.name}</span>
+        </div>
+        <div class="order-info-row">
+          <span class="label">数量</span>
+          <span class="value">${data.quantity} 件</span>
+        </div>
+        <div class="order-info-row">
+          <span class="label">实付金额</span>
+          <span class="value" style="color:var(--secondary);font-size:16px">${fmtMoney(data.total_amount)}</span>
+        </div>
+        <div class="order-info-row">
+          <span class="label">订单状态</span>
+          <span class="value" style="font-family:inherit">${statusBadge(status)}</span>
+        </div>
+      </div>
+      ${levelInfo}
+    </div>
+  `;
+  showModal('orderResultModal');
 }
 
 async function buySecondary(id) {

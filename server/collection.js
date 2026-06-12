@@ -113,6 +113,76 @@ function getCollectionDetail(idOrToken) {
   return { code: 0, data: collection };
 }
 
+function getPurchaseInfo(userId, collectionId) {
+  const db = getDB();
+  const collection = db.prepare('SELECT * FROM collections WHERE id = ?').get(collectionId);
+  if (!collection) return { code: 404, message: '藏品不存在' };
+  
+  const userBought = db.prepare(`SELECT COALESCE(SUM(quantity),0) as c FROM orders 
+    WHERE user_id = ? AND collection_id = ? AND status IN ('PAID','COMPLETED')`)
+    .get(userId, collectionId).c;
+  
+  const remainingStock = collection.total_supply - collection.sold_count;
+  const limitRemaining = collection.per_user_limit - userBought;
+  const SINGLE_MAX = 5;
+  const maxBuyable = Math.max(0, Math.min(limitRemaining, remainingStock, SINGLE_MAX));
+  const isLimitReached = userBought >= collection.per_user_limit;
+  const isSoldOut = remainingStock <= 0;
+  
+  const saleStatus = getSaleStatus(collection);
+  
+  let user = null;
+  let discount = 1;
+  let discountedPrice = collection.original_price;
+  let levelName = '新手藏家';
+  if (userId) {
+    const { getUser, getLevelDiscount, getLevelConfig } = require('./user');
+    user = getUser(userId);
+    if (user) {
+      discount = getLevelDiscount(user.level);
+      discountedPrice = Math.round(collection.original_price * discount * 100) / 100;
+      const levels = getLevelConfig();
+      const lv = levels.find(l => l.level === user.level);
+      if (lv) levelName = lv.name;
+    }
+  }
+  
+  return {
+    code: 0,
+    data: {
+      collection: {
+        id: collection.id,
+        name: collection.name,
+        token_id: collection.token_id,
+        original_price: collection.original_price,
+        total_supply: collection.total_supply,
+        sold_count: collection.sold_count,
+        per_user_limit: collection.per_user_limit,
+        start_sale_time: collection.start_sale_time,
+        end_sale_time: collection.end_sale_time,
+        status: collection.status
+      },
+      user_bought: userBought,
+      remaining_stock: remainingStock,
+      limit_remaining: limitRemaining,
+      single_max: SINGLE_MAX,
+      max_buyable: maxBuyable,
+      is_limit_reached: isLimitReached,
+      is_sold_out: isSoldOut,
+      on_sale: saleStatus.onSale,
+      sale_reason: saleStatus.reason,
+      user: user ? {
+        id: user.id,
+        level: user.level,
+        level_name: levelName,
+        balance: user.balance,
+        discount: discount,
+        discounted_price: discountedPrice
+      } : null
+    }
+  };
+}
+
 function getSaleStatus(collection) {
   const now = Date.now();
   if (collection.status !== 1) return { onSale: false, reason: '藏品未上架' };
@@ -213,7 +283,7 @@ function buyPrimary(userId, collectionId, quantity = 1) {
     recordTransaction(userId, 'BUY_PRIMARY', `购买藏品:${collection.name} x${quantity}`, 
       -totalAmount, user.balance, user.balance - totalAmount);
     
-    return { order_no: orderNo, total_amount: totalAmount };
+    return { order_no: orderNo, total_amount: totalAmount, status: riskResult.review ? 'PENDING_REVIEW' : 'PAID' };
   });
   
   buyCache.set(idempotentKey, true, 10);
@@ -277,5 +347,5 @@ function cancelOrder(orderNo, userId) {
 module.exports = {
   createCollection, importCollectionsBatch, reviewCollection,
   listCollections, getCollectionDetail, buyPrimary, cancelOrder,
-  getSaleStatus, logAdminAction, runRiskCheck
+  getSaleStatus, logAdminAction, runRiskCheck, getPurchaseInfo
 };
